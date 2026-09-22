@@ -98,3 +98,9 @@ Endpoints under `/v2.0/flows/{flowId}/chart`:
 - Conventional Commits (`fix:`, `feat:`, `chore:`, with scopes).
 - Tests mock the api client; mocks may not match real API field projections — verify against the real REST shape (see chart gotchas).
 - Dev skill `.claude/skills/add-tool/SKILL.md` documents the add/extend-a-tool workflow.
+
+## Git / PR workflow
+
+`origin` is the fork (`jacognigy/ai-coe-cognigy-plugin`); `upstream` is `Cognigy/cognigy-plugin` with its push URL set to `DISABLED`. Never push to upstream.
+
+After finishing a commit on a feature branch that has been pushed to `origin`, always give the user an **intra-repo compare URL** to open the PR from — `https://github.com/jacognigy/ai-coe-cognigy-plugin/compare/<base>...<branch>` (no owner qualifier on either side) — rather than telling them to use GitHub's "Compare & pull request" banner or the `/pull/new/<branch>` shortcut. Those always default to comparing against the fork's parent (`Cognigy/cognigy-plugin`), by design of GitHub's fork UX, regardless of which one is clicked — see `docs/ai-coe/playbooks/Contribution-and-Change-Patterns.md` §7 for the incident this caused (PR #50, opened against upstream by accident, closed unmerged).
