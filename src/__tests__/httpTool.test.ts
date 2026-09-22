@@ -30,6 +30,15 @@ const MOCK_IDS = {
   postNode: "aaaaaaaaaaaaaaaaaaaaa005",
 };
 
+/**
+ * Minimal try/catch wrapper so a Code Node fixture satisfies the AI COE
+ * policy layer's codenode.try-catch-required rule without changing what the
+ * statement does.
+ */
+function wrapTry(statement: string): string {
+  return `try {\n  ${statement}\n} catch (error) {\n  api.log(String(error));\n}`;
+}
+
 describe("create_tool – HTTP tool path", () => {
   let api: jest.Mocked<CognigyApiClient>;
   let h: ToolHandlers;
@@ -174,7 +183,7 @@ describe("create_tool – HTTP tool path", () => {
     const result = await h.handleToolCall(
       "create_tool",
       baseArgs({
-        preProcessCode: "input.data = { transformed: true };",
+        preProcessCode: wrapTry("input.data = { transformed: true };"),
       }),
     );
 
@@ -184,7 +193,9 @@ describe("create_tool – HTTP tool path", () => {
 
     const preCallBody = api.post.mock.calls[2][1];
     expect(preCallBody.type).toBe("code");
-    expect(preCallBody.config.code).toBe("input.data = { transformed: true };");
+    expect(preCallBody.config.code).toBe(
+      wrapTry("input.data = { transformed: true };"),
+    );
     expect(preCallBody.label).toBe("My HTTP Tool - Pre-Process");
   });
 
@@ -200,7 +211,7 @@ describe("create_tool – HTTP tool path", () => {
     const result = await h.handleToolCall(
       "create_tool",
       baseArgs({
-        postProcessCode: "input.result = input.httprequest.data;",
+        postProcessCode: wrapTry("input.result = input.httprequest.data;"),
       }),
     );
 
@@ -211,7 +222,7 @@ describe("create_tool – HTTP tool path", () => {
     const postCallBody = api.post.mock.calls[3][1];
     expect(postCallBody.type).toBe("code");
     expect(postCallBody.config.code).toBe(
-      "input.result = input.httprequest.data;",
+      wrapTry("input.result = input.httprequest.data;"),
     );
     expect(postCallBody.label).toBe("My HTTP Tool - Post-Process");
   });
@@ -229,8 +240,8 @@ describe("create_tool – HTTP tool path", () => {
     const result = await h.handleToolCall(
       "create_tool",
       baseArgs({
-        preProcessCode: "input.pre = true;",
-        postProcessCode: "input.post = true;",
+        preProcessCode: wrapTry("input.pre = true;"),
+        postProcessCode: wrapTry("input.post = true;"),
       }),
     );
 
@@ -303,7 +314,7 @@ describe("create_tool – HTTP tool path", () => {
     await h.handleToolCall(
       "create_tool",
       baseArgs({
-        preProcessCode: "input.x = 1;",
+        preProcessCode: wrapTry("input.x = 1;"),
       }),
     );
 
@@ -346,8 +357,8 @@ describe("create_tool – HTTP tool path", () => {
       config: {
         toolId: "fetch_user_posts",
         url: "https://api.example.com/posts",
-        preProcessCode: "input.x = 1;",
-        postProcessCode: "input.y = 2;",
+        preProcessCode: wrapTry("input.x = 1;"),
+        postProcessCode: wrapTry("input.y = 2;"),
       },
     });
 
@@ -460,13 +471,13 @@ describe("update_tool – HTTP child-node resolution", () => {
       aiAgentId: ID.agent,
       toolNodeId: MOCK_IDS.toolNode,
       toolType: "http",
-      config: { postProcessCode: "input.x = 1;" },
+      config: { postProcessCode: wrapTry("input.x = 1;") },
     });
 
     expect(result.updatedFields).toContain("postProcessCode");
     expect(api.patch).toHaveBeenCalledWith(
       `/v2.0/flows/${ID.flow}/chart/nodes/${MOCK_IDS.postNode}`,
-      { config: { code: "input.x = 1;" } },
+      { config: { code: wrapTry("input.x = 1;") } },
     );
   });
 
@@ -629,14 +640,14 @@ describe("update_tool – HTTP child-node resolution", () => {
       toolNodeId: MOCK_IDS.toolNode,
       toolType: "http",
       config: {
-        postProcessCode: "input.y = 2;",
+        postProcessCode: wrapTry("input.y = 2;"),
         postProcessNodeId: MOCK_IDS.postNode,
       },
     });
 
     expect(api.patch).toHaveBeenCalledWith(
       `/v2.0/flows/${ID.flow}/chart/nodes/${MOCK_IDS.postNode}`,
-      { config: { code: "input.y = 2;" } },
+      { config: { code: wrapTry("input.y = 2;") } },
     );
   });
 
@@ -669,7 +680,9 @@ describe("update_tool – HTTP child-node resolution", () => {
       toolNodeId: MOCK_IDS.toolNode,
       toolType: "http",
       config: {
-        postProcessCode: "input.recipes = input.httprequest.body.meals;",
+        postProcessCode: wrapTry(
+          "input.recipes = input.httprequest.body.meals;",
+        ),
       },
     });
 
@@ -682,7 +695,9 @@ describe("update_tool – HTTP child-node resolution", () => {
         mode: "append",
         target: MOCK_IDS.httpNode,
         label: "search_recipes - Post-Process",
-        config: { code: "input.recipes = input.httprequest.body.meals;" },
+        config: {
+          code: wrapTry("input.recipes = input.httprequest.body.meals;"),
+        },
       }),
     );
   });
@@ -714,8 +729,9 @@ describe("update_tool – HTTP child-node resolution", () => {
       toolNodeId: MOCK_IDS.toolNode,
       toolType: "http",
       config: {
-        preProcessCode:
+        preProcessCode: wrapTry(
           'input.normalized = String(input.aiAgent.toolArgs.q || "").trim();',
+        ),
       },
     });
 
@@ -750,7 +766,7 @@ describe("update_tool – HTTP child-node resolution", () => {
       toolNodeId: MOCK_IDS.toolNode,
       toolType: "http",
       config: {
-        preProcessCode: "input.x = 1;",
+        preProcessCode: wrapTry("input.x = 1;"),
         preProcessNodeId: "aaaaaaaaaaaaaaaaaaaaadea",
       },
     });
@@ -777,7 +793,7 @@ describe("update_tool – HTTP child-node resolution", () => {
       aiAgentId: ID.agent,
       toolNodeId: MOCK_IDS.toolNode,
       toolType: "http",
-      config: { postProcessCode: "input.x = 1;" },
+      config: { postProcessCode: wrapTry("input.x = 1;") },
     });
 
     expect(result.updatedFields).not.toContain("postProcessCode");
