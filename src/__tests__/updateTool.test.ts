@@ -22,6 +22,15 @@ const ID = {
   ext: "60d5ec49f1a2c8b1a4e0f00a",
 };
 
+/**
+ * Minimal try/catch wrapper so a Code Node fixture satisfies the AI COE
+ * policy layer's codenode.try-catch-required rule without changing what the
+ * statement does.
+ */
+function wrapTry(statement: string): string {
+  return `try {\n  ${statement}\n} catch (error) {\n  api.log(String(error));\n}`;
+}
+
 describe("update_tool", () => {
   let api: jest.Mocked<CognigyApiClient>;
   let h: ToolHandlers;
@@ -254,14 +263,14 @@ describe("update_tool", () => {
     const result = await h.handleToolCall("update_tool", {
       aiAgentId: ID.agent,
       toolNodeId: ID.tool,
-      config: { preProcessCode: "input.newField = true;" },
+      config: { preProcessCode: wrapTry("input.newField = true;") },
     });
 
     expect(result.updated).toBe(true);
     expect(result.updatedFields).toContain("preProcessCode");
     expect(api.patch).toHaveBeenCalledWith(
       `/v2.0/flows/${ID.flow}/chart/nodes/code-pre-001`,
-      { config: { code: "input.newField = true;" } },
+      { config: { code: wrapTry("input.newField = true;") } },
     );
   });
 
@@ -287,14 +296,14 @@ describe("update_tool", () => {
     const result = await h.handleToolCall("update_tool", {
       aiAgentId: ID.agent,
       toolNodeId: ID.tool,
-      config: { postProcessCode: 'output.result = "done";' },
+      config: { postProcessCode: wrapTry('output.result = "done";') },
     });
 
     expect(result.updated).toBe(true);
     expect(result.updatedFields).toContain("postProcessCode");
     expect(api.patch).toHaveBeenCalledWith(
       `/v2.0/flows/${ID.flow}/chart/nodes/code-post-001`,
-      { config: { code: 'output.result = "done";' } },
+      { config: { code: wrapTry('output.result = "done";') } },
     );
   });
 
@@ -396,7 +405,10 @@ describe("update_tool", () => {
     const result = await h.handleToolCall("update_tool", {
       aiAgentId: ID.agent,
       toolNodeId: ID.tool,
-      config: { preProcessCode: "x = 1;", postProcessCode: "y = 2;" },
+      config: {
+        preProcessCode: wrapTry("x = 1;"),
+        postProcessCode: wrapTry("y = 2;"),
+      },
     });
 
     expect(result._hints).toBeDefined();

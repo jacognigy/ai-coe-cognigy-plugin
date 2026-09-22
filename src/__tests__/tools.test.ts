@@ -37,6 +37,15 @@ const answerBackupGate = (handlers: ToolHandlers) => {
   (handlers as any).backupDeclinedForProject.add(ID.project);
 };
 
+/**
+ * Minimal try/catch wrapper so a Code Node fixture satisfies the AI COE
+ * policy layer's codenode.try-catch-required rule without changing what the
+ * statement does.
+ */
+function wrapTry(statement: string): string {
+  return `try {\n  ${statement}\n} catch (error) {\n  api.log(String(error));\n}`;
+}
+
 describe("ToolHandlers v2", () => {
   let api: jest.Mocked<CognigyApiClient>;
   let h: ToolHandlers;
@@ -2771,7 +2780,11 @@ describe("ToolHandlers v2", () => {
         mode: "appendChild",
         nodeType: "code",
         label: "Cleanup",
-        config: { code: "context.done = true; api.say('done');" },
+        config: {
+          code: wrapTry(
+            'api.addToContext("done", true, "simple"); api.say("done");',
+          ),
+        },
       });
       expect(result.nodeId).toBe(codeNodeId);
       expect(result._hints?.warning).toBeUndefined();
@@ -2839,7 +2852,7 @@ describe("ToolHandlers v2", () => {
         .mockResolvedValueOnce({
           _id: codeNodeId,
           type: "code",
-          config: { code: "const x: =", hasError: true },
+          config: { code: wrapTry("const x: ="), hasError: true },
         });
       api.patch.mockResolvedValueOnce({ _id: codeNodeId });
 
@@ -2847,7 +2860,7 @@ describe("ToolHandlers v2", () => {
         operation: "update",
         flowId: ID.flow,
         nodeId: codeNodeId,
-        config: { code: "const x: =" },
+        config: { code: wrapTry("const x: =") },
       });
 
       expect(result.updated).toBe(true);
@@ -2864,7 +2877,7 @@ describe("ToolHandlers v2", () => {
         .mockResolvedValueOnce({
           _id: codeNodeId,
           type: "code",
-          config: { code: "input.ok = 1;", hasError: false },
+          config: { code: wrapTry("input.ok = 1;"), hasError: false },
         });
       api.patch.mockResolvedValueOnce({ _id: codeNodeId });
 
@@ -2872,7 +2885,7 @@ describe("ToolHandlers v2", () => {
         operation: "update",
         flowId: ID.flow,
         nodeId: codeNodeId,
-        config: { code: "input.ok = 1;" },
+        config: { code: wrapTry("input.ok = 1;") },
       });
 
       expect(result.updated).toBe(true);
@@ -2906,7 +2919,7 @@ describe("ToolHandlers v2", () => {
         .mockResolvedValueOnce({
           _id: codeNodeId,
           type: "code",
-          config: { code: "input.ok = 1;", hasError: false },
+          config: { code: wrapTry("input.ok = 1;"), hasError: false },
         });
       api.patch.mockResolvedValueOnce({ _id: codeNodeId });
 
@@ -2914,13 +2927,13 @@ describe("ToolHandlers v2", () => {
         operation: "update",
         flowId: ID.flow,
         nodeId: codeNodeId,
-        config: { code: "input.ok = 1;" },
+        config: { code: wrapTry("input.ok = 1;") },
       });
 
       const patchBody = api.patch.mock.calls[0][1];
       expect(patchBody.config).not.toHaveProperty("transpiled");
       expect(patchBody.config).not.toHaveProperty("hasError");
-      expect(patchBody.config.code).toBe("input.ok = 1;");
+      expect(patchBody.config.code).toBe(wrapTry("input.ok = 1;"));
     });
   });
 
@@ -2970,7 +2983,7 @@ describe("ToolHandlers v2", () => {
         mode: "appendChild",
         nodeType: "code",
         label: "Process",
-        config: { code: 'input.result = "done";' },
+        config: { code: wrapTry('input.result = "done";') },
       });
 
       expect(result.mode).toBe("append");
